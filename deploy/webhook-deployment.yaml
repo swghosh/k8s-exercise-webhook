@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: image-webhook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-webhook
+  namespace: image-webhook
+  labels:
+    app: image-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-webhook
+  template:
+    metadata:
+      labels:
+        app: image-webhook
+    spec:
+      containers:
+        - name: webhook
+          image: image-webhook:latest  # Replace with your built image
+          args:
+            - "--approved-registries=docker.io,gcr.io,quay.io"
+            - "--tls-cert=/tls/tls.crt"
+            - "--tls-key=/tls/tls.key"
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /tls
+              readOnly: true
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: image-webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-webhook
+  namespace: image-webhook
+spec:
+  selector:
+    app: image-webhook
+  ports:
+    - port: 443
+      targetPort: 8443
